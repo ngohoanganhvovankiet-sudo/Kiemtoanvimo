@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kiểm Toán Vĩ Mô - Lắp Ráp Lập Luận Địa Lí 12</title>
+    
+    <!-- Tải Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tải FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tải Canvas Confetti cho hiệu ứng pháo giấy -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Font chữ Inter / Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            touch-action: manipulation;
+            background: linear-gradient(135deg, #090d16 0%, #1e293b 50%, #0f172a 100%);
+            color: #f3f4f6;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .bg-nature-immersive {
+            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.75), rgba(3, 7, 18, 0.95)),
+                        url('https://images.unsplash.com/photo-1528127269322-539801943592?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        
+        /* Hiệu ứng cho các thẻ từ khóa */
+        .keyword-tag {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+        .keyword-tag.selected {
+            background-color: rgba(56, 189, 248, 0.15);
+            border-color: #38bdf8;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+            transform: translateY(-2px) scale(1.02);
+            color: #38bdf8;
+        }
+        .keyword-tag.error-shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+            border-color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+            40%, 60% { transform: translate3d(3px, 0, 0); }
+        }
+
+        .modal-overlay {
+            backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.88);
+        }
+        @keyframes floatChest {
+            0% { transform: scale(0.3) translateY(40px); opacity: 0; }
+            50% { transform: scale(1.15) translateY(-15px); opacity: 1; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .chest-animation {
+            animation: floatChest 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* Tùy chỉnh thanh cuộn cho web K12 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-nature-immersive min-h-[100dvh] flex items-center justify-center p-2 sm:p-4">
+
+    <div class="w-full max-w-4xl bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/80 flex flex-col min-h-[95vh] sm:min-h-[680px] overflow-hidden relative">
+        
+        <!-- Header Thanh thông tin ngân sách & Vòng kiểm toán -->
+        <div id="game-header" class="hidden bg-slate-950/90 px-4 py-3 border-b border-slate-800 flex justify-between items-center z-10">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-sm sm:text-lg border border-sky-500/30">
+                    <i class="fa-solid fa-user-tie"></i>
+                </div>
+                <div class="hidden sm:block">
+                    <p class="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-400 font-extrabold">Kiểm toán viên</p>
+                    <p id="player-info-display" class="text-xs sm:text-sm font-black text-sky-400 truncate max-w-[150px]"></p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <div class="bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 shadow-inner">
+                    <i class="fa-solid fa-coins text-amber-400 text-xs sm:text-base"></i>
+                    <span id="budget-display" class="font-mono font-black text-amber-400 text-sm sm:text-base">$1,500</span>
+                </div>
+                <div class="bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2">
+                    <i class="fa-solid fa-certificate text-emerald-400 text-xs sm:text-base"></i>
+                    <span id="progress-display" class="font-mono font-black text-emerald-400 text-sm sm:text-base">0/5</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Màn hình 1: Nhập thông tin -->
+        <div id="screen-login" class="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 text-center relative z-10">
+            <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-indigo-500/20 to-sky-500/20 rounded-3xl flex items-center justify-center text-sky-400 text-4xl sm:text-5xl mb-6 shadow-[0_0_40px_rgba(56,189,248,0.25)] border border-sky-500/30">
+                <i class="fa-solid fa-id-card-clip"></i>
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-black tracking-tight text-white mb-2">ĐỊNH DANH HỒ SƠ</h1>
+            <p class="text-sm text-slate-400 mb-8">Vui lòng nhập thông tin để hệ thống ghi nhận kết quả cuối kì.</p>
+            
+            <div class="w-full max-w-sm space-y-4 mb-8">
+                <div>
+                    <input type="text" id="player-name" placeholder="Họ và Tên học sinh" class="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all font-semibold placeholder:text-slate-500">
+                </div>
+                <div>
+                    <input type="text" id="player-class" placeholder="Lớp (VD: 12A1)" class="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all font-semibold placeholder:text-slate-500">
+                </div>
+            </div>
+
+            <button onclick="goToIntro()" class="w-full max-w-sm py-4 bg-sky-600 hover:bg-sky-500 text-white font-black rounded-xl shadow-lg transition-all active:scale-95 text-sm uppercase tracking-wider flex items-center justify-center gap-2">
+                Xác nhận danh tính <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+
+        <!-- Màn hình 2: Giới thiệu luật chơi mới -->
+        <div id="screen-intro" class="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 text-center relative z-10 hidden">
+            <h1 class="text-2xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-teal-300 to-emerald-400 mb-4">
+                CHUYÊN GIA TỔNG HỢP VĨ MÔ
+            </h1>
+            <p class="text-sm sm:text-base text-slate-300 max-w-2xl mb-6 leading-relaxed">
+                Xin chào <b><span id="intro-name-display" class="text-sky-400"></span></b>! Thử thách lần này sẽ khắc nghiệt hơn. Bạn không thể chỉ "chọn bừa" 1 đáp án.
+            </p>
+
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-5 text-left text-xs sm:text-sm space-y-3.5 max-w-lg w-full mb-8 shadow-inner">
+                <div class="flex items-start gap-3 text-slate-300">
+                    <i class="fa-solid fa-microchip text-sky-400 mt-1 w-5 text-center"></i>
+                    <span><strong>Cơ chế "Lắp Ráp":</strong> Bạn phải chọn <strong>NHIỀU thẻ từ khóa</strong> cùng lúc để tạo thành một lập luận hoàn chỉnh duyệt dự án. Thiếu hoặc dư đều bị tính là sai.</span>
+                </div>
+                <div class="flex items-start gap-3 text-slate-300">
+                    <i class="fa-solid fa-money-bill-trend-up text-amber-400 mt-1 w-5 text-center"></i>
+                    <span><strong>Ngân sách:</strong> Cấp vốn ban đầu <strong>$1500</strong>. Mỗi lần nộp hồ sơ sai bị phạt <strong>-$300</strong>. Hết tiền = Thanh tra thất bại.</span>
+                </div>
+                <div class="flex items-start gap-3 text-slate-300">
+                    <i class="fa-solid fa-star text-yellow-400 mt-1 w-5 text-center"></i>
+                    <span><strong>Chấm điểm:</strong> Hoàn thành không sai lỗi nào (Perfect) nhận <strong>+0.5 Điểm</strong>. Nếu có sai sót nhưng vẫn hoàn thành: <strong>+0.25 Điểm</strong>.</span>
+                </div>
+            </div>
+
+            <button onclick="startGame()" class="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-500 hover:to-teal-500 text-white font-black rounded-xl shadow-lg transition-all active:scale-95 text-sm uppercase tracking-wider flex items-center justify-center gap-2">
+                <span>Bắt đầu nhiệm vụ</span> <i class="fa-solid fa-rocket"></i>
+            </button>
+        </div>
+
+        <!-- Màn hình 3: Chơi Lắp ráp (Gameplay) -->
+        <div id="screen-game" class="flex-1 flex flex-col p-4 sm:p-6 hidden relative z-10 overflow-y-auto">
+            <!-- Mô tả dự án -->
+            <div class="bg-slate-950/80 border-l-4 border-sky-500 p-4 sm:p-5 rounded-r-xl mb-4 shadow-inner relative overflow-hidden">
+                <div class="absolute -right-2 -top-2 text-slate-800/40 text-6xl"><i class="fa-solid fa-folder-open"></i></div>
+                <p class="text-[10px] sm:text-xs uppercase font-extrabold text-sky-400 tracking-wider mb-1.5 flex items-center gap-2 relative z-10">
+                    <i class="fa-solid fa-map-location-dot"></i> <span id="region-indicator"></span>
+                </p>
+                <p id="project-desc" class="text-sm sm:text-base text-slate-100 leading-relaxed font-bold relative z-10"></p>
+            </div>
+
+            <div class="flex-1 flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <span id="step-indicator" class="text-[10px] sm:text-xs uppercase font-black text-amber-400 tracking-wider bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
+                        Bước 1: Điều kiện cần
+                    </span>
+                    <span class="text-xs text-slate-400 italic">Chọn các thẻ phù hợp</span>
+                </div>
+                
+                <p id="audit-question" class="text-sm sm:text-[15px] font-extrabold text-white mb-4 leading-snug drop-shadow-md"></p>
+
+                <!-- Lưới Từ khóa -->
+                <div id="keywords-container" class="flex flex-wrap gap-2.5 mb-6">
+                    <!-- Dynamic Keyword Tags render here -->
+                </div>
+
+                <!-- Nút Nộp hồ sơ -->
+                <div class="mt-auto pt-2 pb-4">
+                    <button id="submit-btn" onclick="submitDossier()" class="w-full py-4 bg-slate-700 text-slate-400 font-black rounded-xl shadow-lg transition-all text-sm sm:text-base uppercase tracking-wider flex items-center justify-center gap-2 cursor-not-allowed border border-slate-600" disabled>
+                        <span>Chưa chọn dữ liệu</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Màn hình 4: Kết quả -->
+        <div id="screen-result" class="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 text-center hidden relative z-10">
+            <div id="result-icon" class="text-6xl sm:text-7xl mb-4 drop-shadow-[0_0_20px_rgba(56,189,248,0.4)]">🏆</div>
+            <h2 id="result-title" class="text-3xl sm:text-4xl font-black mb-2 text-sky-400 uppercase">Chứng nhận vĩ mô</h2>
+            <p id="result-desc" class="text-sm text-slate-300 max-w-md mb-6 leading-relaxed"></p>
+            
+            <!-- Chứng chỉ Box -->
+            <div id="certificate-box" class="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700 p-6 rounded-2xl mb-8 w-full max-w-sm shadow-2xl relative overflow-hidden hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-sky-500/10 rounded-bl-full -z-0"></div>
+                <div class="relative z-10 text-left space-y-3">
+                    <div>
+                        <p class="text-[10px] uppercase text-slate-500 font-bold">Họ và tên</p>
+                        <p id="cert-name" class="text-lg font-black text-white"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] uppercase text-slate-500 font-bold">Lớp</p>
+                        <p id="cert-class" class="text-base font-bold text-sky-400"></p>
+                    </div>
+                    <div class="border-t border-slate-700/50 pt-3 flex justify-between items-end">
+                        <div>
+                            <p class="text-[10px] uppercase text-slate-500 font-bold">Xếp loại điểm cộng</p>
+                            <p id="cert-score" class="text-3xl font-black text-amber-400 drop-shadow-md"></p>
+                        </div>
+                        <div id="cert-stamp" class="text-xs font-black px-2 py-1 border-2 rounded rotate-[-10deg] opacity-80">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Box Phạt 30 phút (Ẩn mặc định) -->
+            <div id="bankruptcy-timer-box" class="hidden flex-col items-center justify-center mb-8 bg-rose-950/40 border border-rose-500/30 p-5 rounded-2xl w-full max-w-sm shadow-[0_0_20px_rgba(244,63,94,0.15)]">
+                <i class="fa-solid fa-hourglass-half text-rose-500 text-3xl mb-3 animate-pulse"></i>
+                <div id="countdown-display" class="font-mono text-4xl sm:text-5xl font-black text-rose-400 tracking-widest drop-shadow-md">30:00</div>
+                <p class="text-xs text-rose-300 uppercase mt-3 font-bold tracking-wider text-center">Hệ thống tạm khóa</p>
+            </div>
+
+            <button id="btn-action" onclick="location.reload()" class="w-full sm:w-auto px-8 py-3.5 bg-slate-700 hover:bg-slate-600 text-white font-black rounded-xl shadow-lg transition-all active:scale-95 text-xs sm:text-sm uppercase tracking-wider">
+                Đóng và Thoát <i class="fa-solid fa-power-off ml-1"></i>
+            </button>
+        </div>
+
+        <!-- Feedback Modal (Chữa bài) -->
+        <div id="feedback-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+            <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative text-center">
+                <div id="modal-chest-container" class="mb-4 flex justify-center items-center h-16">
+                    <div id="modal-chest-icon" class="text-5xl inline-block">✅</div>
+                </div>
+                <h3 id="modal-feedback-title" class="text-lg font-black mb-3 text-emerald-400 uppercase">Hợp lệ</h3>
+                <div class="bg-slate-950/50 p-3.5 rounded-xl border border-slate-800 mb-5 text-left">
+                    <p id="modal-feedback-desc" class="text-sm text-slate-300 leading-relaxed font-medium"></p>
+                </div>
+                <button onclick="closeFeedbackModal()" class="w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-black rounded-xl shadow-lg transition-all text-sm uppercase tracking-wider active:scale-95 border border-sky-400/30">
+                    Tiếp tục
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Data Structure: Thay vì 1 đáp án đúng, mảng correctIndices chứa index của các thẻ cần phải chọn
+        const auditScenarios = [
+            // MIỀN TÂY BẮC & BẮC TRUNG BỘ - THỦY ĐIỆN
+            {
+                region: "Tây Bắc & Bắc Trung Bộ",
+                projectDesc: "Siêu Dự án Thủy điện: Đề xuất xây dựng đập thủy điện bậc thang quy mô lớn để giải quyết an ninh năng lượng.",
+                step1: {
+                    type: "Điều kiện cần",
+                    question: "Để hồ sơ Thủy điện được duyệt, vùng này BẮT BUỘC phải sở hữu những đặc điểm tự nhiên nào? (Chọn 2 thẻ)",
+                    keywords: [
+                        "Địa hình đồi núi cao, bị chia cắt", // Đúng (0)
+                        "Đồng bằng phẳng, rộng lớn",
+                        "Sông ngòi có độ dốc lớn, lưu lượng dồi dào", // Đúng (2)
+                        "Khí hậu cận xích đạo nóng quanh năm",
+                        "Đất phù sa màu mỡ"
+                    ],
+                    correctIndices: [0, 2],
+                    hint: "Tuyệt vời! Thủy điện bắt buộc cần 2 yếu tố: <b>Độ dốc địa hình lớn</b> (tạo thế năng) và <b>Nguồn nước dồi dào</b>."
+                },
+                step2: {
+                    type: "Khó khăn & Khắc phục",
+                    question: "Quá trình vận hành thủy điện ở vùng núi dốc này đối mặt với rủi ro gì và đâu là biện pháp khắc phục cốt lõi? (Chọn 2 thẻ)",
+                    keywords: [
+                        "Xâm nhập mặn sâu vào đất liền",
+                        "Trồng và bảo vệ rừng phòng hộ đầu nguồn", // Đúng (1)
+                        "Ngập lụt diện rộng quanh năm",
+                        "Lũ quét, sạt lở đất nghiêm trọng vào mùa mưa", // Đúng (3)
+                        "Xây dựng đê biển kiên cố"
+                    ],
+                    correctIndices: [1, 3],
+                    hint: "Đúng! Địa hình dốc sinh ra <b>Lũ quét, sạt lở</b>. Biện pháp sống còn không phải là đê điều, mà là <b>Bảo vệ rừng đầu nguồn</b> để giữ đất, giữ nước."
+                }
+            },
+            // MIỀN NAM TRUNG BỘ & NAM BỘ - CÂY CÔNG NGHIỆP
+            {
+                region: "Nam Trung Bộ & Nam Bộ",
+                projectDesc: "Đại Dự án Nông nghiệp: Quy hoạch hàng trăm nghìn hecta chuyên canh cây công nghiệp nhiệt đới (Cao su, Cà phê, Điều).",
+                step1: {
+                    type: "Điều kiện cần",
+                    question: "Sự kết hợp giữa Khí hậu và Thổ nhưỡng nào là 'mỏ vàng' cho dự án này? (Chọn 2 thẻ)",
+                    keywords: [
+                        "Mùa đông lạnh sâu sắc (có rét hại)",
+                        "Đất feralit trên đá badan tơi xốp, giàu dinh dưỡng", // Đúng (1)
+                        "Khí hậu cận xích đạo nền nhiệt cao quanh năm", // Đúng (2)
+                        "Đất phèn, đất mặn diện tích lớn",
+                        "Mạng lưới kênh rạch chằng chịt ngập nước"
+                    ],
+                    correctIndices: [1, 2],
+                    hint: "Chính xác! <b>Khí hậu nóng quanh năm</b> và <b>Đất badan Tây Nguyên/Đông Nam Bộ</b> chính là vựa cây công nghiệp nhiệt đới lớn nhất nước ta."
+                },
+                step2: {
+                    type: "Khó khăn cốt lõi",
+                    question: "Thách thức sinh thái lớn nhất ngăn cản sự phát triển nông nghiệp ở miền Nam là gì và giải pháp? (Chọn 2 thẻ)",
+                    keywords: [
+                        "Mùa khô kéo dài sâu sắc (4-5 tháng) gây thiếu nước", // Đúng (0)
+                        "Bão lũ và sương muối tàn phá",
+                        "Phát triển mạnh hệ thống thủy lợi (hồ chứa, kênh đào)", // Đúng (2)
+                        "Xây dựng ruộng bậc thang chống xói mòn",
+                        "Băng tuyết cản trở thu hoạch"
+                    ],
+                    correctIndices: [0, 2],
+                    hint: "Sắc sảo! Khác với miền Bắc, miền Nam có <b>mùa khô cực kỳ gay gắt</b>. Do đó, <b>Thủy lợi (giữ nước)</b> là bài toán số 1 (như Hồ Dầu Tiếng, Trị An)."
+                }
+            },
+            // MIỀN BẮC & ĐB BẮC BỘ - RAU ÔN ĐỚI
+            {
+                region: "Miền Bắc & ĐB Bắc Bộ",
+                projectDesc: "Quy hoạch Vụ Đông: Xuất khẩu rau củ quả ôn đới (Su hào, bắp cải, cà rốt) quy mô lớn.",
+                step1: {
+                    type: "Điều kiện cần",
+                    question: "Nhờ yếu tố khí hậu đặc thù nào mà vùng này có thể biến Vụ Đông thành vụ sản xuất chính? (Chọn 2 thẻ)",
+                    keywords: [
+                        "Gió Tây khô nóng hoạt động mạnh",
+                        "Ảnh hưởng sâu sắc của gió mùa Đông Bắc", // Đúng (1)
+                        "Mùa hạ có mưa lớn kéo dài",
+                        "Khí hậu có mùa đông lạnh điền hình nhất cả nước", // Đúng (3)
+                        "Nhiệt độ trung bình năm luôn trên 27 độ C"
+                    ],
+                    correctIndices: [1, 3],
+                    hint: "Chuẩn! <b>Gió mùa Đông Bắc</b> tạo ra <b>Mùa đông lạnh</b> - đặc ân tự nhiên giúp miền Bắc trồng được rau củ ôn đới mà miền Nam không có."
+                },
+                step2: {
+                    type: "Nguyên nhân thất bại vùng khác",
+                    question: "Nếu mang dự án rau ôn đới này vào Đồng bằng sông Cửu Long (Nam Bộ), vì sao sẽ thất bại? (Chọn 2 thẻ)",
+                    keywords: [
+                        "Vì ĐBSCL có nền nhiệt độ cao quanh năm", // Đúng (0)
+                        "Vì ĐBSCL thiếu đất phù sa màu mỡ",
+                        "Vì hoàn toàn không có mùa đông lạnh", // Đúng (2)
+                        "Vì bão lũ triền miên",
+                        "Vì địa hình quá dốc"
+                    ],
+                    correctIndices: [0, 2],
+                    hint: "Chính xác! Cây ôn đới cần lạnh để sinh trưởng và ra hoa. Miền Nam <b>nóng quanh năm</b> và <b>không có mùa đông</b>, gieo hạt giống ôn đới sẽ chết héo hoặc không ra củ."
+                }
+            },
+            // ĐBSCL - VỰA LÚA
+            {
+                region: "Nam Bộ (Đồng bằng sông Cửu Long)",
+                projectDesc: "Chiến lược An ninh Lương thực: Duy trì ĐBSCL là vựa lúa gạo và thủy sản số 1 quốc gia.",
+                step1: {
+                    type: "Điều kiện cần",
+                    question: "Để hình thành vựa lúa quy mô khổng lồ, cần điều kiện không gian và thổ nhưỡng nào? (Chọn 3 thẻ)",
+                    keywords: [
+                        "Đồng bằng châu thổ rộng lớn, bằng phẳng", // Đúng (0)
+                        "Địa hình thung lũng xen kẽ núi cao",
+                        "Đất phù sa sông màu mỡ", // Đúng (2)
+                        "Mạng lưới sông ngòi, kênh rạch chằng chịt", // Đúng (3)
+                        "Các cao nguyên xếp tầng đất feralit"
+                    ],
+                    correctIndices: [0, 2, 3],
+                    hint: "Quá đỉnh! Để trồng lúa nước xuất khẩu cần: <b>Mặt bằng rộng</b>, <b>Đất phù sa</b> và <b>Nguồn nước dồi dào từ mạng lưới kênh rạch</b>."
+                },
+                step2: {
+                    type: "Thách thức hiện tại",
+                    question: "Vấn đề tự nhiên nào đang đe dọa nghiêm trọng vựa lúa này trong mùa khô và giải pháp thích ứng? (Chọn 2 thẻ)",
+                    keywords: [
+                        "Động đất và sóng thần",
+                        "Xâm nhập mặn sâu vào đất liền do thiếu nước ngọt", // Đúng (1)
+                        "Chuyển đổi cơ cấu mùa vụ, lai tạo giống chịu mặn", // Đúng (2)
+                        "Cháy rừng đầu nguồn diện rộng",
+                        "Phun sương nhân tạo làm mát"
+                    ],
+                    correctIndices: [1, 2],
+                    hint: "Xuất sắc! Địa hình ĐBSCL rất thấp, khi mùa khô thiếu nước ngọt, <b>Nước biển (mặn) lấn sâu</b>. Giải pháp hiện đại là <b>Sống chung với hạn mặn, chuyển đổi giống</b>."
+                }
+            },
+            // MIỀN BẮC & ĐB BẮC BỘ - KHOÁNG SẢN
+            {
+                region: "Miền Bắc & ĐB Bắc Bộ",
+                projectDesc: "Siêu Dự án Nhiệt Điện Than: Đề xuất cấp phép các nhà máy nhiệt điện gắn liền với mỏ nguyên liệu hóa thạch.",
+                step1: {
+                    type: "Điều kiện cần",
+                    question: "Loại khoáng sản nào là đặc trưng nổi bật nhất của Miền Bắc phục vụ cho dự án này? (Chọn 1 thẻ)",
+                    keywords: [
+                        "Bô-xít luyện nhôm",
+                        "Than đá trữ lượng lớn nhất cả nước (Quảng Ninh)", // Đúng (1)
+                        "Dầu mỏ thềm lục địa",
+                        "Cát thủy tinh",
+                        "Mỏ sắt thạch anh"
+                    ],
+                    correctIndices: [1],
+                    hint: "Đúng! Cấu trúc địa chất Đông Bắc hình thành bể than đá Quảng Ninh lớn nhất ĐNA, thuận lợi xây dựng các nhà máy nhiệt điện lớn (Uông Bí, Cẩm Phả)."
+                },
+                step2: {
+                    type: "Khó khăn môi trường",
+                    question: "Việc khai thác mỏ trên địa hình đồi núi của khu vực này gây ra hậu quả gì? (Chọn 2 thẻ)",
+                    keywords: [
+                        "Gây ra lũ lụt ở đồng bằng",
+                        "Sạt lở các bãi thải mỏ khi mưa lớn", // Đúng (1)
+                        "Ô nhiễm nguồn nước và suy thoái cảnh quan", // Đúng (2)
+                        "Gây thủng tầng ozone",
+                        "Kích hoạt núi lửa phun trào"
+                    ],
+                    correctIndices: [1, 2],
+                    hint: "Chính xác! Địa hình núi dốc + mưa lớn làm các bãi đất đá thải từ mỏ than dễ bị <b>sạt lở</b>, kèm theo <b>ô nhiễm nước</b>."
+                }
+            }
+        ];
+
+        let playerData = { name: "", class: "" };
+        let currentScenarioIndex = 0;
+        let currentStep = 1;
+        let budget = 1500;
+        let totalMistakes = 0; // Theo dõi lỗi để tính điểm
+        let activeScenario = null;
+        let selectedKeywords = []; // Lưu trữ các index đang được chọn
+        let lockoutTimer = null; // Biến lưu trữ bộ đếm ngược
+
+        // Web Audio API
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                let now = audioCtx.currentTime;
+
+                if (type === 'click') {
+                    osc.frequency.setValueAtTime(500, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                    osc.start(now); osc.stop(now + 0.05);
+                } else if (type === 'success') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(783.99, now + 0.15); // G5
+                    osc.frequency.setValueAtTime(1046.50, now + 0.3); // C6
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(now); osc.stop(now + 0.5);
+                } else if (type === 'error') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.setValueAtTime(100, now + 0.2);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now); osc.stop(now + 0.3);
+                }
+            } catch (e) { console.log("Audio skip"); }
+        }
+
+        // Navigation Functions
+        function goToIntro() {
+            playSound('click');
+            const n = document.getElementById('player-name').value.trim();
+            const c = document.getElementById('player-class').value.trim();
+            
+            if (!n || !c) {
+                alert("Vui lòng nhập đầy đủ Họ tên và Lớp!"); // Dùng alert tạm ở bước đăng nhập cho đơn giản
+                return;
+            }
+            
+            playerData.name = n;
+            playerData.class = c;
+            
+            document.getElementById('screen-login').classList.add('hidden');
+            document.getElementById('intro-name-display').innerText = playerData.name;
+            document.getElementById('screen-intro').classList.remove('hidden');
+        }
+
+        function startGame() {
+            playSound('click');
+            currentScenarioIndex = 0;
+            currentStep = 1;
+            budget = 1500;
+            totalMistakes = 0;
+            
+            document.getElementById('screen-intro').classList.add('hidden');
+            document.getElementById('game-header').classList.remove('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+            
+            document.getElementById('player-info-display').innerText = `${playerData.name} - ${playerData.class}`;
+            
+            loadScenario();
+        }
+
+        function loadScenario() {
+            activeScenario = auditScenarios[currentScenarioIndex];
+            
+            document.getElementById('region-indicator').innerText = activeScenario.region;
+            document.getElementById('project-desc').innerText = activeScenario.projectDesc;
+            document.getElementById('progress-display').innerText = `${currentScenarioIndex + 1}/${auditScenarios.length}`;
+            updateBudgetUI();
+            
+            renderStep();
+        }
+
+        function updateBudgetUI() {
+            const display = document.getElementById('budget-display');
+            display.innerText = `$${budget}`;
+            display.className = `font-mono font-black text-sm sm:text-base ${budget > 500 ? 'text-amber-400' : 'text-rose-500 animate-pulse'}`;
+        }
+
+        // Logic Lắp ráp (Render & Tương tác)
+        function renderStep() {
+            selectedKeywords = []; // Reset lựa chọn
+            const stepData = currentStep === 1 ? activeScenario.step1 : activeScenario.step2;
+            
+            const stepInd = document.getElementById('step-indicator');
+            stepInd.innerText = currentStep === 1 ? "Bước 1: " + stepData.type : "Bước 2: " + stepData.type;
+            stepInd.className = `text-[10px] sm:text-xs uppercase font-black tracking-wider px-2.5 py-1 rounded border ${currentStep===1 ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-purple-500/10 text-purple-400 border-purple-500/30'}`;
+            
+            document.getElementById('audit-question').innerText = stepData.question;
+            updateSubmitButton();
+
+            const container = document.getElementById('keywords-container');
+            container.innerHTML = '';
+
+            // Render thẻ, gắn index gốc để so sánh
+            let keywordObjects = stepData.keywords.map((text, idx) => ({ text, originalIndex: idx }));
+            // Trộn ngẫu nhiên
+            keywordObjects.sort(() => Math.random() - 0.5);
+
+            keywordObjects.forEach((kw) => {
+                const btn = document.createElement('div');
+                btn.className = `keyword-tag cursor-pointer bg-slate-800/80 border border-slate-700 text-slate-300 text-xs sm:text-sm font-semibold py-2.5 px-4 rounded-xl flex-grow text-center`;
+                btn.innerText = kw.text;
+                btn.dataset.index = kw.originalIndex;
+
+                btn.onclick = () => toggleKeyword(btn, kw.originalIndex);
+                container.appendChild(btn);
+            });
+        }
+
+        function toggleKeyword(btnElement, originalIndex) {
+            playSound('click');
+            const pos = selectedKeywords.indexOf(originalIndex);
+            if (pos === -1) {
+                selectedKeywords.push(originalIndex);
+                btnElement.classList.add('selected');
+            } else {
+                selectedKeywords.splice(pos, 1);
+                btnElement.classList.remove('selected');
+                btnElement.classList.remove('error-shake');
+            }
+            updateSubmitButton();
+        }
+
+        function updateSubmitButton() {
+            const btn = document.getElementById('submit-btn');
+            if (selectedKeywords.length > 0) {
+                btn.disabled = false;
+                btn.className = "w-full py-4 bg-sky-600 hover:bg-sky-500 text-white font-black rounded-xl shadow-lg shadow-sky-900/40 transition-all text-sm sm:text-base uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 border border-sky-400/30";
+                btn.innerHTML = `<span>Duyệt Hồ Sơ</span> <i class="fa-solid fa-stamp"></i>`;
+            } else {
+                btn.disabled = true;
+                btn.className = "w-full py-4 bg-slate-800 text-slate-500 font-black rounded-xl transition-all text-sm sm:text-base uppercase tracking-wider flex items-center justify-center gap-2 cursor-not-allowed border border-slate-700";
+                btn.innerHTML = `<span>Chưa chọn dữ liệu</span>`;
+            }
+        }
+
+        // Logic Kiểm tra đáp án
+        function submitDossier() {
+            const stepData = currentStep === 1 ? activeScenario.step1 : activeScenario.step2;
+            const correctArr = stepData.correctIndices;
+
+            // Kiểm tra mảng chọn có giống hệt mảng đúng không (không cần quan tâm thứ tự)
+            const isCorrect = (selectedKeywords.length === correctArr.length) && 
+                              selectedKeywords.every(val => correctArr.includes(val));
+
+            if (isCorrect) {
+                playSound('success');
+                if (currentStep === 1) {
+                    currentStep = 2;
+                    renderStep(); // Làm luôn bước 2 không cần hiện modal
+                } else {
+                    // Xong 1 dự án
+                    budget += 200; // Thưởng tiền
+                    updateBudgetUI();
+                    showFeedbackModal(true, "HỒ SƠ HỢP LỆ!", stepData.hint);
+                }
+            } else {
+                playSound('error');
+                totalMistakes++;
+                budget -= 300;
+                updateBudgetUI();
+                
+                // Hiệu ứng sai
+                const tags = document.querySelectorAll('.keyword-tag');
+                tags.forEach(tag => {
+                    const idx = parseInt(tag.dataset.index);
+                    if (selectedKeywords.includes(idx)) {
+                        tag.classList.add('error-shake');
+                        setTimeout(() => tag.classList.remove('error-shake'), 500);
+                    }
+                });
+
+                if (budget <= 0) {
+                    showFeedbackModal(false, "ĐÌNH CHỈ KIỂM TOÁN!", "Ngân sách đã cạn kiệt do chọn sai quá nhiều đặc điểm địa lí. Hồ sơ bị thu hồi.");
+                } else {
+                    // Gợi ý khi sai
+                    let errorHint = "Dữ liệu lập luận chưa chính xác hoặc còn thiếu! Bị phạt -$300.<br><br>Gợi ý: ";
+                    errorHint += `Câu này cần chọn đúng <b>${correctArr.length}</b> thẻ từ khóa. Hãy thử lại.`;
+                    showFeedbackModal(false, "BÁC BỎ HỒ SƠ", errorHint);
+                    // Bỏ chọn tất cả sau khi sai
+                    selectedKeywords = [];
+                    tags.forEach(t => t.classList.remove('selected'));
+                    updateSubmitButton();
+                }
+            }
+        }
+
+        function showFeedbackModal(isSuccess, title, desc) {
+            const chestContainer = document.getElementById('modal-chest-container');
+            const icon = document.getElementById('modal-chest-icon');
+            
+            if (isSuccess) {
+                icon.innerText = "✅";
+                icon.className = "text-6xl drop-shadow-[0_0_15px_rgba(52,211,153,0.5)] chest-animation";
+                document.getElementById('modal-feedback-title').className = "text-lg font-black mb-3 text-emerald-400 uppercase tracking-tight";
+            } else {
+                icon.innerText = "❌";
+                icon.className = "text-6xl drop-shadow-[0_0_15px_rgba(244,63,94,0.5)]";
+                document.getElementById('modal-feedback-title').className = "text-lg font-black mb-3 text-rose-400 uppercase tracking-tight";
+            }
+
+            document.getElementById('modal-feedback-title').innerText = title;
+            document.getElementById('modal-feedback-desc').innerHTML = desc;
+            document.getElementById('feedback-modal').classList.remove('hidden');
+        }
+
+        function closeFeedbackModal() {
+            playSound('click');
+            document.getElementById('feedback-modal').classList.add('hidden');
+
+            if (budget <= 0) {
+                triggerGameOver(false);
+                return;
+            }
+
+            const title = document.getElementById('modal-feedback-title').innerText;
+            if (title === "HỒ SƠ HỢP LỆ!") {
+                currentScenarioIndex++;
+                currentStep = 1;
+                
+                if (currentScenarioIndex < auditScenarios.length) {
+                    loadScenario();
+                } else {
+                    triggerGameOver(true);
+                }
+            }
+        }
+
+        function triggerGameOver(isWin) {
+            document.getElementById('game-header').classList.add('hidden');
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-result').classList.remove('hidden');
+
+            const btnAction = document.getElementById('btn-action');
+
+            if (!isWin) {
+                document.getElementById('result-icon').innerText = '💸';
+                document.getElementById('result-title').innerText = 'THANH TRA THẤT BẠI';
+                document.getElementById('result-title').className = 'text-3xl sm:text-4xl font-black mb-2 text-rose-500 uppercase';
+                
+                // Cập nhật câu text theo yêu cầu
+                document.getElementById('result-desc').innerText = 'Bạn đã phá sản hãy huy động vốn và quay lại sau 30 phút';
+                document.getElementById('certificate-box').classList.add('hidden');
+
+                // Hiển thị box đếm ngược
+                document.getElementById('bankruptcy-timer-box').classList.remove('hidden');
+                document.getElementById('bankruptcy-timer-box').classList.add('flex');
+                
+                // Vô hiệu hóa nút thoát/chơi lại
+                btnAction.disabled = true;
+                btnAction.className = "w-full sm:w-auto px-8 py-3.5 bg-slate-800 text-slate-500 font-black rounded-xl cursor-not-allowed opacity-80 text-xs sm:text-sm uppercase tracking-wider border border-slate-700";
+                btnAction.innerHTML = `Đang chờ vốn... <i class="fa-solid fa-lock ml-1"></i>`;
+
+                // Đếm ngược 30 phút (1800 giây)
+                let timeLeft = 1800; 
+                clearInterval(lockoutTimer);
+                
+                lockoutTimer = setInterval(() => {
+                    timeLeft--;
+                    let m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+                    let s = (timeLeft % 60).toString().padStart(2, '0');
+                    document.getElementById('countdown-display').innerText = `${m}:${s}`;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(lockoutTimer);
+                        btnAction.disabled = false;
+                        btnAction.className = "w-full sm:w-auto px-8 py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-black rounded-xl shadow-lg transition-all active:scale-95 text-xs sm:text-sm uppercase tracking-wider";
+                        btnAction.innerHTML = `Vốn đã sẵn sàng <i class="fa-solid fa-arrow-right ml-1"></i>`;
+                        btnAction.onclick = () => location.reload();
+                    }
+                }, 1000);
+
+            } else {
+                playSound('success');
+                document.getElementById('result-icon').innerText = '🎓';
+                document.getElementById('result-title').innerText = 'QUY HOẠCH HOÀN TẤT';
+                document.getElementById('result-title').className = 'text-3xl sm:text-4xl font-black mb-2 text-sky-400 uppercase';
+                document.getElementById('result-desc').innerText = 'Chúc mừng! Bạn đã hoàn thành việc lắp ráp lập luận, nắm rõ tiềm năng và hạn chế của 3 miền địa lí.';
+                
+                // Tính điểm
+                let finalScore = "+0.25";
+                let stampColor = "text-sky-500 border-sky-500";
+                let stampText = "HOÀN THÀNH";
+                
+                if (totalMistakes === 0) {
+                    finalScore = "+0.5";
+                    stampColor = "text-amber-500 border-amber-500";
+                    stampText = "XUẤT SẮC";
+                }
+
+                document.getElementById('cert-name').innerText = playerData.name;
+                document.getElementById('cert-class').innerText = playerData.class;
+                document.getElementById('cert-score').innerText = finalScore;
+                
+                const stamp = document.getElementById('cert-stamp');
+                stamp.innerText = stampText;
+                stamp.className = `text-sm font-black px-3 py-1.5 border-4 rounded-lg rotate-[-15deg] opacity-90 ${stampColor}`;
+                
+                document.getElementById('certificate-box').classList.remove('hidden');
+
+                confetti({ particleCount: 200, spread: 120, origin: { y: 0.6 }, colors: ['#38bdf8', '#34d399', '#fbbf24'] });
+            }
+        }
+    </script>
+</body>
+</html>
